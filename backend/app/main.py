@@ -3,11 +3,14 @@ from __future__ import annotations
 import asyncio
 from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.responses import FileResponse
 
 from .auth import (
     ROLE_BANK_OFFICER,
@@ -27,12 +30,17 @@ from .tasks import enqueue_complaint
 app = FastAPI(title="ATM-Sentinel Prototype API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[],
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origins=["*"],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|.*\.onrender\.com)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+project_root = Path(__file__).resolve().parents[2]
+dist_dir = project_root / "dist"
+if dist_dir.exists() and (dist_dir / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=dist_dir / "assets"), name="assets")
 
 
 def now() -> str:
@@ -403,3 +411,17 @@ async def alerts_socket(websocket: WebSocket) -> None:
             await websocket.send_json({"type": "HEARTBEAT", "timestamp": now(), "data": {"status": "CONNECTED", "isSimulated": False}})
     except (WebSocketDisconnect, asyncio.CancelledError):
         manager.disconnect(websocket)
+
+
+@app.get("/", include_in_schema=False)
+def serve_index_root() -> FileResponse:
+    if not dist_dir.exists():
+        raise HTTPException(status_code=404, detail="Frontend bundle not built yet")
+    return FileResponse(str(dist_dir / "index.html"))
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def serve_frontend(full_path: str) -> FileResponse:
+    if not dist_dir.exists():
+        raise HTTPException(status_code=404, detail="Frontend bundle not built yet")
+    return FileResponse(str(dist_dir / "index.html"))

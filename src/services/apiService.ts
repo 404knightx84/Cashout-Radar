@@ -7,7 +7,11 @@ let zonesState: H3Zone[] = [...INITIAL_ZONES];
 let atmsState: ATMPoint[] = [...INITIAL_ATMS];
 let caseState: CaseData = { ...MOCK_CASE_DATA };
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const DEFAULT_API_BASE_URL = typeof window !== 'undefined'
+  ? (window.location.port === '5173' ? 'http://127.0.0.1:8000' : window.location.origin)
+  : 'http://127.0.0.1:8000';
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
 let connectionMode: 'prototype' | 'backend' = API_BASE_URL ? 'backend' : 'prototype';
 
 async function requestApi<T>(path: string, init?: RequestInit): Promise<T | null> {

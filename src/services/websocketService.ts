@@ -76,6 +76,11 @@ class WebSocketClient {
       return parsed.toString();
     }
 
+    if (typeof window !== 'undefined' && window.location.port !== '5173') {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${protocol}//${window.location.host}/ws/alerts`;
+    }
+
     return 'ws://localhost:8000/ws/alerts';
   }
 
